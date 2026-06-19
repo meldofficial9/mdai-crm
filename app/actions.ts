@@ -15,14 +15,16 @@ function getServerSupabase() {
 }
 
 async function getDefaultAgencyId(supabase: ReturnType<typeof createClient>) {
-  const { data: agency, error } = await supabase
+  const { data, error } = await supabase
     .from('agencies')
     .select('id')
     .order('created_at', { ascending: true })
     .limit(1)
     .single()
 
-  if (error || !agency) {
+  const agency = data as { id: string } | null
+
+  if (error || !agency?.id) {
     throw new Error('Please create a demo agency in Supabase first.')
   }
 
