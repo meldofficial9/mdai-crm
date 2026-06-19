@@ -1,5 +1,7 @@
+export const dynamic = 'force-dynamic'
+
 import { supabase } from '@/lib/supabase'
-import { addLead } from './actions'
+import { addLead, deleteLead, updateLeadStatus } from './actions'
 
 type Lead = {
   id: string
@@ -17,13 +19,30 @@ type Lead = {
   created_at: string
 }
 
+const pipelineStages = [
+  'New Lead',
+  'AI Contacted',
+  'Qualification in Progress',
+  'Qualified Lead',
+  'Appointment Scheduled',
+  'Not Interested'
+]
+
+const interestLevels = ['Unknown', 'Low', 'Medium', 'High']
+
 function statusClass(status: string | null) {
   const value = (status || '').toLowerCase()
   if (value.includes('qualified')) return 'status qualified'
   if (value.includes('appointment')) return 'status appointment'
   if (value.includes('not')) return 'status not'
+  if (value.includes('progress')) return 'status progress'
+  if (value.includes('contacted')) return 'status contacted'
   if (value.includes('new')) return 'status new'
   return 'status'
+}
+
+function fullName(lead: Lead) {
+  return `${lead.first_name || 'Unknown'} ${lead.last_name || ''}`.trim()
 }
 
 export default async function Home() {
@@ -34,17 +53,20 @@ export default async function Home() {
 
   const safeLeads = (leads || []) as Lead[]
   const newLeads = safeLeads.filter((lead) => lead.status === 'New Lead').length
+  const contacted = safeLeads.filter((lead) => (lead.status || '').includes('Contacted')).length
   const qualified = safeLeads.filter((lead) => (lead.status || '').includes('Qualified')).length
   const appointments = safeLeads.filter((lead) => (lead.status || '').includes('Appointment')).length
+  const highIntent = safeLeads.filter((lead) => lead.interest_level === 'High').length
 
   return (
     <main className="page">
       <header className="header">
         <div className="logoBlock">
+          <p className="eyebrow">MDAI Solutions</p>
           <h1>MDAI CRM</h1>
           <p>AI Lead Recovery Dashboard for Medicare & ACA agencies</p>
         </div>
-        <div className="badge">MIA v1.0 · Manual CRM MVP</div>
+        <div className="badge">MIA v1.1 · CRM MVP</div>
       </header>
 
       {error && (
@@ -53,59 +75,140 @@ export default async function Home() {
         </div>
       )}
 
-      <section className="grid">
-        <div className="card">
+      <section className="grid metricsGrid">
+        <div className="card metricCard">
           <p className="metricLabel">Total Leads</p>
           <p className="metricValue">{safeLeads.length}</p>
         </div>
-        <div className="card">
+        <div className="card metricCard">
           <p className="metricLabel">New Leads</p>
           <p className="metricValue">{newLeads}</p>
         </div>
-        <div className="card">
+        <div className="card metricCard">
+          <p className="metricLabel">AI Contacted</p>
+          <p className="metricValue">{contacted}</p>
+        </div>
+        <div className="card metricCard">
           <p className="metricLabel">Qualified</p>
           <p className="metricValue">{qualified}</p>
         </div>
-        <div className="card">
+        <div className="card metricCard">
           <p className="metricLabel">Appointments</p>
           <p className="metricValue">{appointments}</p>
+        </div>
+        <div className="card metricCard">
+          <p className="metricLabel">High Interest</p>
+          <p className="metricValue">{highIntent}</p>
+        </div>
+      </section>
+
+      <section className="card pipelineCard">
+        <div className="sectionHeader">
+          <div>
+            <h2 className="sectionTitle">Pipeline Board</h2>
+            <p className="smallText">A quick view of where every lead stands.</p>
+          </div>
+        </div>
+        <div className="pipelineBoard">
+          {pipelineStages.map((stage) => {
+            const stageLeads = safeLeads.filter((lead) => (lead.status || 'New Lead') === stage)
+            return (
+              <div className="pipelineColumn" key={stage}>
+                <div className="columnHeader">
+                  <span>{stage}</span>
+                  <strong>{stageLeads.length}</strong>
+                </div>
+                <div className="miniLeadList">
+                  {stageLeads.length === 0 && <p className="emptyText">No leads</p>}
+                  {stageLeads.slice(0, 4).map((lead) => (
+                    <div className="miniLead" key={lead.id}>
+                      <strong>{fullName(lead)}</strong>
+                      <span>{lead.product || 'Medicare'} · {lead.interest_level || 'Unknown'}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
         </div>
       </section>
 
       <section className="mainGrid">
         <div className="card">
-          <h2 className="sectionTitle">Lead Pipeline</h2>
+          <div className="sectionHeader">
+            <div>
+              <h2 className="sectionTitle">Lead List</h2>
+              <p className="smallText">Update status and MIA notes directly from the CRM.</p>
+            </div>
+          </div>
+
           <div className="leadList">
             {safeLeads.length === 0 && (
               <p className="smallText">No leads yet. Add your first test lead using the form.</p>
             )}
+
             {safeLeads.map((lead) => (
               <div key={lead.id} className="leadCard">
                 <div className="leadTop">
                   <div>
-                    <p className="leadName">
-                      {lead.first_name || 'Unknown'} {lead.last_name || ''}
-                    </p>
+                    <p className="leadName">{fullName(lead)}</p>
                     <p className="leadMeta">
                       {lead.product || 'Medicare'} · {lead.state || 'State N/A'} · ZIP {lead.zip_code || 'N/A'}
                     </p>
                   </div>
                   <span className={statusClass(lead.status)}>{lead.status || 'New Lead'}</span>
                 </div>
-                <p className="smallText">Phone: {lead.phone || 'N/A'} · Email: {lead.email || 'N/A'}</p>
-                <p className="smallText">Source: {lead.lead_source || 'Manual'} · Interest: {lead.interest_level || 'Unknown'}</p>
-                {lead.ai_summary && <p className="smallText">MIA Notes: {lead.ai_summary}</p>}
+
+                <div className="contactRows">
+                  <p>Phone: {lead.phone || 'N/A'}</p>
+                  <p>Email: {lead.email || 'N/A'}</p>
+                  <p>Source: {lead.lead_source || 'Manual'}</p>
+                  <p>Interest: {lead.interest_level || 'Unknown'}</p>
+                </div>
+
+                {lead.ai_summary && <p className="noteBox">MIA Notes: {lead.ai_summary}</p>}
+
+                <form action={updateLeadStatus} className="inlineForm">
+                  <input type="hidden" name="lead_id" value={lead.id} />
+                  <label>
+                    Status
+                    <select name="status" defaultValue={lead.status || 'New Lead'}>
+                      {pipelineStages.map((stage) => (
+                        <option key={stage}>{stage}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Interest
+                    <select name="interest_level" defaultValue={lead.interest_level || 'Unknown'}>
+                      {interestLevels.map((level) => (
+                        <option key={level}>{level}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="full">
+                    MIA Notes
+                    <textarea name="ai_summary" defaultValue={lead.ai_summary || ''} />
+                  </label>
+                  <button type="submit">Update Lead</button>
+                </form>
+
+                <form action={deleteLead}>
+                  <input type="hidden" name="lead_id" value={lead.id} />
+                  <button className="deleteButton" type="submit">Delete Lead</button>
+                </form>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="card">
-          <h2 className="sectionTitle">Add Test Lead</h2>
+        <div className="card stickyCard">
+          <h2 className="sectionTitle">Add New Lead</h2>
+          <p className="smallText">Use this to add test leads or manually enter leads for the first demo agency.</p>
           <form action={addLead} className="formGrid">
             <label>
               First Name
-              <input name="first_name" placeholder="John" />
+              <input name="first_name" placeholder="John" required />
             </label>
             <label>
               Last Name
@@ -138,12 +241,9 @@ export default async function Home() {
             <label>
               Status
               <select name="status" defaultValue="New Lead">
-                <option>New Lead</option>
-                <option>AI Contacted</option>
-                <option>Qualification in Progress</option>
-                <option>Qualified Lead</option>
-                <option>Appointment Scheduled</option>
-                <option>Not Interested</option>
+                {pipelineStages.map((stage) => (
+                  <option key={stage}>{stage}</option>
+                ))}
               </select>
             </label>
             <label>
@@ -153,10 +253,9 @@ export default async function Home() {
             <label>
               Interest Level
               <select name="interest_level" defaultValue="Unknown">
-                <option>Unknown</option>
-                <option>Low</option>
-                <option>Medium</option>
-                <option>High</option>
+                {interestLevels.map((level) => (
+                  <option key={level}>{level}</option>
+                ))}
               </select>
             </label>
             <label className="full">
