@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@supabase/supabase-js'
 
-function getServerSupabase() {
+function getServerSupabase(): any {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
@@ -14,40 +14,50 @@ function getServerSupabase() {
   return createClient(url, key)
 }
 
-async function getDefaultAgencyId(supabase: ReturnType<typeof createClient>) {
+async function getDefaultAgencyId(): Promise<string> {
+  const supabase = getServerSupabase()
+
   const { data, error } = await supabase
     .from('agencies')
     .select('id')
     .order('created_at', { ascending: true })
     .limit(1)
-    .single()
+    .maybeSingle()
 
-  const agency = data as { id: string } | null
+  const agency = data as { id?: string } | null
 
-  if (error || !agency?.id) {
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  if (!agency?.id) {
     throw new Error('Please create a demo agency in Supabase first.')
   }
 
   return agency.id
 }
 
+function textValue(formData: FormData, key: string, fallback = ''): string {
+  return String(formData.get(key) || fallback).trim()
+}
+
 export async function addLead(formData: FormData) {
   const supabase = getServerSupabase()
-  const agencyId = await getDefaultAgencyId(supabase)
+  const agencyId = await getDefaultAgencyId()
 
   const lead = {
     agency_id: agencyId,
-    first_name: String(formData.get('first_name') || '').trim(),
-    last_name: String(formData.get('last_name') || '').trim(),
-    phone: String(formData.get('phone') || '').trim(),
-    email: String(formData.get('email') || '').trim(),
-    state: String(formData.get('state') || '').trim().toUpperCase(),
-    zip_code: String(formData.get('zip_code') || '').trim(),
-    product: String(formData.get('product') || 'Medicare'),
-    status: String(formData.get('status') || 'New Lead'),
-    lead_source: String(formData.get('lead_source') || 'Manual'),
-    interest_level: String(formData.get('interest_level') || 'Unknown'),
-    ai_summary: String(formData.get('ai_summary') || '').trim()
+    first_name: textValue(formData, 'first_name'),
+    last_name: textValue(formData, 'last_name'),
+    phone: textValue(formData, 'phone'),
+    email: textValue(formData, 'email'),
+    state: textValue(formData, 'state').toUpperCase(),
+    zip_code: textValue(formData, 'zip_code'),
+    product: textValue(formData, 'product', 'Medicare'),
+    status: textValue(formData, 'status', 'New Lead'),
+    lead_source: textValue(formData, 'lead_source', 'Manual'),
+    interest_level: textValue(formData, 'interest_level', 'Unknown'),
+    ai_summary: textValue(formData, 'ai_summary')
   }
 
   const { error } = await supabase.from('leads').insert(lead)
@@ -61,10 +71,7 @@ export async function addLead(formData: FormData) {
 
 export async function updateLeadStatus(formData: FormData) {
   const supabase = getServerSupabase()
-  const leadId = String(formData.get('lead_id') || '')
-  const status = String(formData.get('status') || 'New Lead')
-  const interestLevel = String(formData.get('interest_level') || 'Unknown')
-  const aiSummary = String(formData.get('ai_summary') || '').trim()
+  const leadId = textValue(formData, 'lead_id')
 
   if (!leadId) {
     throw new Error('Missing lead id')
@@ -73,9 +80,9 @@ export async function updateLeadStatus(formData: FormData) {
   const { error } = await supabase
     .from('leads')
     .update({
-      status,
-      interest_level: interestLevel,
-      ai_summary: aiSummary,
+      status: textValue(formData, 'status', 'New Lead'),
+      interest_level: textValue(formData, 'interest_level', 'Unknown'),
+      ai_summary: textValue(formData, 'ai_summary'),
       last_contact_at: new Date().toISOString()
     })
     .eq('id', leadId)
@@ -89,7 +96,7 @@ export async function updateLeadStatus(formData: FormData) {
 
 export async function deleteLead(formData: FormData) {
   const supabase = getServerSupabase()
-  const leadId = String(formData.get('lead_id') || '')
+  const leadId = textValue(formData, 'lead_id')
 
   if (!leadId) {
     throw new Error('Missing lead id')
