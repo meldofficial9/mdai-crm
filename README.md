@@ -1,19 +1,30 @@
-# MDAI CRM v2.2
+# MDAI CRM v2.3
 
-This version fixes the Netlify TypeScript build error in `app/actions.ts` by removing fragile Supabase generic typing.
+This version adds the first MIA Message MVP.
 
-## Upload
+## What changed
+- Generate first MIA outreach message for a lead
+- Store MIA messages in the `conversations` table
+- Log customer replies manually
+- Display conversation history under each lead
+- Update lead to `AI Contacted` after MIA message is generated
 
-1. Unzip this folder.
-2. Upload the contents to your GitHub repo.
-3. Commit changes.
-4. In Netlify, run **Trigger deploy → Clear cache and deploy site**.
+## Required Supabase SQL
+Before testing MIA messages, go to Supabase > SQL Editor and run:
 
-## Required Netlify Environment Variables
+`supabase/schema.sql`
 
+This creates/updates:
+- agencies
+- leads
+- conversations
+- temporary public demo policies
+
+Important: these demo policies are only for MVP testing. Before real client data, add authentication and secure RLS.
+
+## Netlify
+Keep these environment variables:
 - NEXT_PUBLIC_SUPABASE_URL
 - NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-## Supabase Testing
-
-For demo testing only, make sure RLS is disabled or you have public read/write policies for the demo tables.
+Deploy through Netlify after uploading to GitHub.
