@@ -1,7 +1,17 @@
 export const dynamic = 'force-dynamic'
 
 import { supabase } from '@/lib/supabase'
-import { addLead, deleteLead, updateLeadStatus } from './actions'
+import { addCustomerReply, addLead, deleteLead, generateMiaMessage, updateLeadStatus } from './actions'
+
+type Conversation = {
+  id: string
+  lead_id: string
+  sender: string
+  channel: string | null
+  message: string
+  ai_notes: string | null
+  created_at: string
+}
 
 type Lead = {
   id: string
@@ -51,7 +61,13 @@ export default async function Home() {
     .select('*')
     .order('created_at', { ascending: false })
 
+  const { data: conversations } = await supabase
+    .from('conversations')
+    .select('*')
+    .order('created_at', { ascending: true })
+
   const safeLeads = (leads || []) as Lead[]
+  const safeConversations = (conversations || []) as Conversation[]
   const newLeads = safeLeads.filter((lead) => lead.status === 'New Lead').length
   const contacted = safeLeads.filter((lead) => (lead.status || '').includes('Contacted')).length
   const qualified = safeLeads.filter((lead) => (lead.status || '').includes('Qualified')).length
@@ -66,7 +82,7 @@ export default async function Home() {
           <h1>MDAI CRM</h1>
           <p>AI Lead Recovery Dashboard for Medicare & ACA agencies</p>
         </div>
-        <div className="badge">MIA v1.1 · CRM MVP</div>
+        <div className="badge">MIA v1.2 · Message MVP</div>
       </header>
 
       {error && (
@@ -167,6 +183,39 @@ export default async function Home() {
                 </div>
 
                 {lead.ai_summary && <p className="noteBox">MIA Notes: {lead.ai_summary}</p>}
+
+                <div className="miaPanel">
+                  <div className="miaHeader">
+                    <div>
+                      <strong>MIA Conversation</strong>
+                      <p className="smallText">Generate the first compliant outreach message and log customer replies.</p>
+                    </div>
+                    <form action={generateMiaMessage}>
+                      <input type="hidden" name="lead_id" value={lead.id} />
+                      <button type="submit">Generate MIA Message</button>
+                    </form>
+                  </div>
+
+                  <div className="conversationList">
+                    {safeConversations.filter((conversation) => conversation.lead_id === lead.id).length === 0 && (
+                      <p className="emptyText">No conversation yet.</p>
+                    )}
+                    {safeConversations
+                      .filter((conversation) => conversation.lead_id === lead.id)
+                      .map((conversation) => (
+                        <div key={conversation.id} className={conversation.sender === 'MIA' ? 'message miaMessage' : 'message customerMessage'}>
+                          <span>{conversation.sender}</span>
+                          <p>{conversation.message}</p>
+                        </div>
+                      ))}
+                  </div>
+
+                  <form action={addCustomerReply} className="replyForm">
+                    <input type="hidden" name="lead_id" value={lead.id} />
+                    <input name="message" placeholder="Paste customer reply here..." />
+                    <button type="submit">Log Reply</button>
+                  </form>
+                </div>
 
                 <form action={updateLeadStatus} className="inlineForm">
                   <input type="hidden" name="lead_id" value={lead.id} />

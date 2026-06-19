@@ -116,3 +116,71 @@ button:hover { opacity: 0.92; }
 
 @media (max-width: 1100px) { .metricsGrid, .mainGrid { grid-template-columns: 1fr; } .stickyCard { position: static; } }
 @media (max-width: 700px) { .page { padding: 18px; } .header { flex-direction: column; } .formGrid, .inlineForm, .contactRows { grid-template-columns: 1fr; } .logoBlock h1 { font-size: 32px; } }
+
+.miaPanel {
+  margin-top: 18px;
+  padding: 16px;
+  border-radius: 18px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.miaHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.conversationList {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.message {
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+}
+
+.message span {
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.message p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.miaMessage {
+  background: #eef6ff;
+}
+
+.customerMessage {
+  background: #fff7ed;
+}
+
+.replyForm {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+}
+
+.replyForm input {
+  width: 100%;
+}
+
+@media (max-width: 760px) {
+  .miaHeader,
+  .replyForm {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+}
