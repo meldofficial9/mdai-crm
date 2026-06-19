@@ -1,28 +1,19 @@
-# MDAI CRM v1.1
+# MDAI CRM v2.2
 
-This version adds:
+This version fixes the Netlify TypeScript build error in `app/actions.ts` by removing fragile Supabase generic typing.
 
-- Add New Lead form
-- Lead status updates
-- Interest level updates
-- MIA notes updates
-- Delete lead button
-- Pipeline board
-- Dashboard metrics
-- Dynamic Netlify/Supabase data refresh
+## Upload
 
-## Upload steps
-
-1. Download and unzip this folder.
-2. Upload the contents into the GitHub repo.
+1. Unzip this folder.
+2. Upload the contents to your GitHub repo.
 3. Commit changes.
-4. Netlify should redeploy automatically.
+4. In Netlify, run **Trigger deploy → Clear cache and deploy site**.
 
-## Required Netlify environment variables
+## Required Netlify Environment Variables
 
 - NEXT_PUBLIC_SUPABASE_URL
 - NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-## Supabase note
+## Supabase Testing
 
-For demo testing, RLS may be disabled. Before using real clients, authentication and RLS policies must be added.
+For demo testing only, make sure RLS is disabled or you have public read/write policies for the demo tables.
